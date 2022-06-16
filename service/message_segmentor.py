@@ -9,8 +9,8 @@ from typing import Tuple, List, Dict, Any
 import hyperscan
 import multiprocess
 
-WORDS_FILE_PATH = "../../dat/en_full.txt"
-DB_FOLDER_NAME = "../../res/serialized_en_dbs_full_in_chunks"
+WORDS_FILE_PATH = "./dat/en_full.txt"
+DB_FOLDER_NAME = "./dat/serialized_en_dbs_full_in_chunks"
 
 CHUNK_SIZE = 10000
 FREQUENCY_SUM = 735777659
