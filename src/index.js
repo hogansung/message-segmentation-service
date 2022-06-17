@@ -8,7 +8,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <div className="container">
-        <div className="col-md-9 content-area m-5">
+        <div className="content-area m-5">
             <React.StrictMode>
                 <QueryFormAndResponse/>
             </React.StrictMode>
