@@ -6,12 +6,14 @@ class QueryFormAndResponse extends React.Component {
         super(props);
         this.state = {
             input_string: '',
-            optimize_segments_checkbox: false,
-            response_entities: []
+            debug_mode: false,
+            response_entities: [],
+            overall_score: null,
+            debug_logs: []
         };
 
         this.handleInputStringChange = this.handleInputStringChange.bind(this);
-        this.handleOptimizeSegmentsCheckboxChange = this.handleOptimizeSegmentsCheckboxChange.bind(this);
+        this.handleDebugModeCheckboxChange = this.handleDebugModeCheckboxChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
     }
 
@@ -19,19 +21,23 @@ class QueryFormAndResponse extends React.Component {
         this.setState({input_string: event.target.value});
     }
 
-    handleOptimizeSegmentsCheckboxChange(event) {
-        this.setState({optimize_segments_checkbox: event.target.checked});
-        console.log(this.state);
+    handleDebugModeCheckboxChange(event) {
+        this.setState({debug_mode: event.target.checked});
     }
 
     handleSubmit(event) {
-        console.log(this.state);
+        console.log(this.state)
         axios.post("/query", {
             "message": this.state.input_string,
-            "b_optimized": this.state.optimize_segments_checkbox
+            "debug_mode": this.state.debug_mode
         })
             .then(response => {
-                this.setState({response_entities: response.data.response_entities});
+                this.setState({
+                    response_entities: response.data.response_entities,
+                    overall_score: response.data.overall_score,
+                    debug_logs: response.data.debug_logs,
+                });
+                console.log(this.state)
             }).catch((error) => {
                 if (error.response) {
                     console.log(error.response)
@@ -44,6 +50,7 @@ class QueryFormAndResponse extends React.Component {
     }
 
     render() {
+        console.log()
         return (
             <div className="bd-content ps-lg-2">
                 <div>
@@ -54,11 +61,11 @@ class QueryFormAndResponse extends React.Component {
                                 spellCheck="false" onChange={this.handleInputStringChange}/>
                         </div>
                         <div className="form-check">
-                            <input type="checkbox" className="form-check-input" id="optimizeSegmentsCheckbox"
-                                onClick={this.handleOptimizeSegmentsCheckboxChange.bind(this)}/>
-                            <label className="form-check-label" htmlFor="optimizeSegmentsCheckbox">Optimize Segments</label>
-                        </div>
-                        <br/>
+                           <input type="checkbox" className="form-check-input" id="debugModeCheckbox"
+                               onClick={this.handleDebugModeCheckboxChange.bind(this)}/>
+                           <label className="form-check-label" htmlFor="debugModeCheckbox">Debug Mode</label>
+                       </div>
+                       <br/>
                         <button type="submit" className="btn btn-primary">Submit</button>
                     </form>
                 </div>
@@ -68,23 +75,61 @@ class QueryFormAndResponse extends React.Component {
                 <table className="table table-hover">
                     <thead>
                         <tr>
-                            <th scope="col">#</th>
-                            <th scope="col">Segment</th>
-                            <th scope="col">Score</th>
+                            <th scope="col" style={{ width: "10%" }}>#</th>
+                            <th scope="col" style={{ width: "20%" }}>Score</th>
+                            <th scope="col" style={{ width: "70%" }}>Segment</th>
                         </tr>
                     </thead>
                     <tbody>
                         {
                             this.state.response_entities.map((response_entity, index) => (
-                                <tr key={index}>
-                                    <th scope="row">{index}</th>
-                                    <td>{response_entity.segment}</td>
-                                    <td>{response_entity.score}</td>
+                                <tr key={ index }>
+                                    <th scope="row">{ index }</th>
+                                    <td>{ response_entity.score.toFixed(5) }</td>
+                                    <td>{ response_entity.segment }</td>
                                 </tr>
                             ))
                         }
                     </tbody>
                 </table>
+                {
+                    this.state.overall_score &&
+                    <div>
+                        <br/>
+                        <br/>
+                        <div className="card">
+                            <div className="card-header">
+                                <b>Overall Segments [ Score: { this.state.overall_score.toFixed(5) }]</b>
+                            </div>
+                            <div className="card-body">
+                                <p className="card-title">{
+                                    this.state.response_entities.map(response_entity => (
+                                        response_entity.segment
+                                    )).join(' ')
+                                }</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+                {
+                    this.state.debug_mode && this.state.debug_logs &&
+                    <div>
+                        <br/>
+                        <br/>
+                        <div className="card">
+                            <div className="card-header">
+                                <b>Debug Logs</b>
+                            </div>
+                            <div className="card-body">
+                                {
+                                    this.state.debug_logs.map((debug_log, _) => (
+                                        <p>{ debug_log }</p>
+                                    ))
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
         );
     }

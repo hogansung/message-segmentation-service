@@ -4,6 +4,8 @@
 /dat
 service/__pycache__
 
+# pycharm
+.idea/
 
 # dependencies
 /node_modules

@@ -11,25 +11,28 @@ message_segmentor = MessageSegmentor()
 @api.route("/query", methods=["POST"])
 def query() -> Dict[str, List[Dict[str, Union[str, float]]]]:
     json = request.json
+    print(json)
     if "message" not in json:
         flash("`message` is required.")
-    if "b_optimized" not in json:
-        flash("`b_optimized` is required.")
+    if "debug_mode" not in json:
+        flash("`debug_mode` is required.")
 
     message = request.json["message"]
-    b_optimized = request.json["b_optimized"]
+    debug_mode = request.json["debug_mode"]
 
-    segments, scores = message_segmentor.segment_word(
-        input_str=message, b_optimized=b_optimized, debug_flag=False
+    segments, scores, overall_score, debug_logs = message_segmentor.segment_sentence(
+        sentence=message, debug_mode=debug_mode
     )
-    print(segments)
 
     return {
         "response_entities": [
             {
                 "segment": segment,
-                "score": score,
+                # Serialization on inf won't work, so return `None` instead
+                "score": score if score != float("-inf") else None,
             }
             for segment, score in zip(segments, scores)
-        ]
+        ],
+        "overall_score": overall_score,
+        "debug_logs": debug_logs,
     }
