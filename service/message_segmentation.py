@@ -5,7 +5,7 @@ from flask import request, flash, Flask
 from message_segmentor import MessageSegmentor
 
 api = Flask(__name__)
-message_segmentor = MessageSegmentor()
+message_segmentor = MessageSegmentor(b_overwrite_db=True)
 
 
 @api.route("/query", methods=["POST"])

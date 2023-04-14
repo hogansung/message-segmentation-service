@@ -1,3 +1,5 @@
+import pathlib
+
 import math
 import os
 import re
@@ -28,8 +30,7 @@ def build_and_serialize_dfa_db(
     db_folder_name_with_prefix_char = os.path.join(
         DB_FOLDER_NAME, str(ord(prefix_char))
     )
-    if not os.path.exists(db_folder_name_with_prefix_char):
-        os.mkdir(db_folder_name_with_prefix_char)
+    pathlib.Path(db_folder_name_with_prefix_char).mkdir(parents=True, exist_ok=True)
 
     expressions = [
         # Make sure each regex is a full match
@@ -68,7 +69,7 @@ def build_and_serialize_dfa_db(
 
 
 class MessageSegmentor:
-    def __init__(self, overwrite_db=False) -> None:
+    def __init__(self, b_overwrite_db=False) -> None:
         self.lang = "en"
         self.word_metadata_by_char: Dict[str, List[Tuple[str, float]]] = defaultdict(
             list
@@ -82,9 +83,9 @@ class MessageSegmentor:
         self.inf: int = sys.maxsize
         self.debug_mode: bool = False
         self.debug_logs: List[str] = []
-        self.load_words_and_db(overwrite_db)
+        self.load_words_and_db(b_overwrite_db)
 
-    def load_words_and_db(self, overwrite_db: bool):
+    def load_words_and_db(self, b_overwrite_db: bool):
         # Reference: https://github.com/rspeer/wordfreq
         frequency_dict = wordfreq.get_frequency_dict(self.lang)
         for word, frequency in frequency_dict.items():
@@ -94,9 +95,8 @@ class MessageSegmentor:
         for prefix_char, metadata in self.word_metadata_by_char.items():
             self.word_metadata_by_char[prefix_char] = sorted(metadata)
 
-        if not os.path.exists(DB_FOLDER_NAME) or overwrite_db:
-            if not os.path.exists(DB_FOLDER_NAME):
-                os.mkdir(DB_FOLDER_NAME)
+        if not os.path.exists(DB_FOLDER_NAME) or b_overwrite_db:
+            pathlib.Path(DB_FOLDER_NAME).mkdir(parents=True, exist_ok=True)
 
             # Reference: https://stackoverflow.com/questions/40217873/multiprocessing-use-only-the-physical-cores
             mp = multiprocess.Pool(multiprocess.cpu_count() - 1)
@@ -118,6 +118,7 @@ class MessageSegmentor:
             db_folder_name_with_prefix_char = os.path.join(
                 DB_FOLDER_NAME, str(ord(prefix_char))
             )
+            pathlib.Path(db_folder_name_with_prefix_char).mkdir(parents=True, exist_ok=True)
             for file_name in sorted(os.listdir(db_folder_name_with_prefix_char)):
                 if not file_name.endswith(".db"):
                     continue
