@@ -5,6 +5,14 @@ from service.abstract_message_segementor import AbstractMessageSegmentor
 
 
 class MessageSegmentorV1(AbstractMessageSegmentor):
+    """
+    It runs at a complexity of `O(N * (N + K))`, where `N` is the length of string and `K` is the number of candidates.
+    After adding `+` quantifier to each character of regex, the complexity of `K` could be as large as `N^2`. However,
+    this could be prevented by preprocess the regexes.
+
+    TODO: Preprocess the regexes to reduce the complexity to O(N^2) instead of the naive O(N^3).
+    """
+
     db_folder_name = "./dat/serialized_word_freq_in_chunks_v1"
 
     def dp_wordfreq(self, codepoint_idx: int) -> float:

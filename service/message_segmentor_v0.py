@@ -5,6 +5,11 @@ from service.abstract_message_segementor import AbstractMessageSegmentor
 
 
 class MessageSegmentorV0(AbstractMessageSegmentor):
+    """
+    It runs at a complexity of `O(N^2 * |DFA.scan()|)`, where `N` is the length of string. With adding both the start
+    and end anchors for each regex, the complexity of `|DFA.scan()|` is very possibly `O(1)`, and is worst at `O(N)`.
+    """
+
     db_folder_name = "./dat/serialized_word_freq_in_chunks_v0"
 
     def dp_wordfreq(self, codepoint_idx: int) -> float:
