@@ -18,6 +18,7 @@ DB_FOLDER_NAME = "./dat/serialized_word_freq_in_chunks_v1"
 CHUNK_SIZE = 10000
 MAX_FLOAT_VAL = float("+inf")
 MIN_FLOAT_VAL = float("-inf")
+MIN_LOG_PROB = -30
 
 MAX_REPETITION = 10
 # SEPARATION_PATTERN = (
@@ -189,6 +190,15 @@ class MessageSegmentorV1:
                 context={"matched_regex_metadata": matched_regex_metadata},
             )
             self.num_op += self.num_bytes - byte_idx
+
+            # Default a minimum prob to move forward
+            self.rcd[codepoint_idx] = max(
+                self.rcd[codepoint_idx],
+                (
+                    MIN_LOG_PROB + self.dp_wordfreq(codepoint_idx + 1),
+                    codepoint_idx + 1,
+                ),
+            )
 
             for matched_regex_idx, matched_regex_len in matched_regex_metadata:
                 score = self.word_metadata_by_codepoint[prefix_codepoint][
