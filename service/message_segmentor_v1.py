@@ -191,10 +191,10 @@ class MessageSegmentorV1:
             self.num_op += self.num_bytes - byte_idx
 
             for matched_regex_idx, matched_regex_len in matched_regex_metadata:
-                self.num_op += 1
                 score = self.word_metadata_by_codepoint[prefix_codepoint][
                     db_idx * CHUNK_SIZE + matched_regex_idx
                 ][1]
+                self.num_op += 1
                 n_codepoint_idx = self.byte_idx_to_codepoint_idx[
                     byte_idx + matched_regex_len
                 ]

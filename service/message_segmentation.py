@@ -2,12 +2,13 @@ import sys
 from typing import List, Union, Dict
 from flask import request, flash, Flask
 
-# from message_segmentor_v0 import MessageSegmentorV0
-from message_segmentor_v1 import MessageSegmentorV1
+from message_segmentor_v0 import MessageSegmentorV0
+
+# from message_segmentor_v1 import MessageSegmentorV1
 
 api = Flask(__name__)
-# message_segmentor = MessageSegmentorV0(b_overwrite_db=False)
-message_segmentor = MessageSegmentorV1(b_overwrite_db=False)
+message_segmentor = MessageSegmentorV0(b_overwrite_db=False)
+# message_segmentor = MessageSegmentorV1(b_overwrite_db=False)
 
 sys.setrecursionlimit(10000)
 

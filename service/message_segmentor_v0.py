@@ -193,12 +193,14 @@ class MessageSegmentorV0:
                     match_event_handler=self.on_match,
                     context={"matched_regex_metadata": matched_regex_metadata},
                 )
+                self.num_op += n_byte_idx - byte_idx
 
                 # There could still be multiple matches. For example, "aaa" matches "a+", "a+a+", "a+a+a+".
                 for matched_regex_idx, matched_regex_len in matched_regex_metadata:
                     score = self.word_metadata_by_codepoint[prefix_codepoint][
                         db_idx * CHUNK_SIZE + matched_regex_idx
                     ][1]
+                    self.num_op += 1
 
                     self.rcd[codepoint_idx] = max(
                         self.rcd[codepoint_idx],
