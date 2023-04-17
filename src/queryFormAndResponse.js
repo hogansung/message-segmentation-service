@@ -26,18 +26,18 @@ class QueryFormAndResponse extends React.Component {
     }
 
     handleSubmit(event) {
-        console.log(this.state)
         axios.post("/query", {
             "message": this.state.input_string,
             "debug_mode": this.state.debug_mode
         })
             .then(response => {
+                // console.log(response.data)
+                // console.log(response.data.response_entities)
                 this.setState({
                     response_entities: response.data.response_entities,
                     overall_score: response.data.overall_score,
                     debug_logs: response.data.debug_logs,
                 });
-                console.log(this.state)
             }).catch((error) => {
                 if (error.response) {
                     console.log(error.response)
@@ -50,7 +50,6 @@ class QueryFormAndResponse extends React.Component {
     }
 
     render() {
-        console.log()
         return (
             <div className="bd-content ps-lg-2">
                 <div>
