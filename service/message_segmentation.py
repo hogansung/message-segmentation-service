@@ -4,10 +4,12 @@ from flask import request, flash, Flask
 
 from message_segmentor_v0 import MessageSegmentorV0
 from message_segmentor_v1 import MessageSegmentorV1
+from message_segmentor_v2 import MessageSegmentorV2
 
 api = Flask(__name__)
 # message_segmentor = MessageSegmentorV0(b_overwrite_db=False)
-message_segmentor = MessageSegmentorV1(b_overwrite_db=False)
+# message_segmentor = MessageSegmentorV1(b_overwrite_db=False)
+message_segmentor = MessageSegmentorV2(b_overwrite_db=True)
 
 sys.setrecursionlimit(10000)
 

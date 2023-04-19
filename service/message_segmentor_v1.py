@@ -13,7 +13,7 @@ class MessageSegmentorV1(AbstractMessageSegmentor):
     TODO: Preprocess the regexes to reduce the complexity to O(N^2) instead of the naive O(N^3).
     """
 
-    db_folder_name = "./dat/serialized_word_freq_in_chunks_v1"
+    db_folder_path = "./dat/serialized_word_freq_in_chunks_v1"
 
     def dp_wordfreq(self, codepoint_idx: int) -> float:
         if codepoint_idx == self.num_codepoints:
@@ -45,7 +45,7 @@ class MessageSegmentorV1(AbstractMessageSegmentor):
             matched_regex_metadata: List[Tuple[int, int]] = []
             db.scan(
                 self.smashed_bytes[byte_idx:],
-                match_event_handler=self.on_match,
+                match_event_handler=self._on_match,
                 context={"matched_regex_metadata": matched_regex_metadata},
             )
             self.num_op += self.num_bytes - byte_idx
