@@ -15,7 +15,7 @@ import multiprocess
 import wordfreq
 
 
-class AbstractMessageSegmentor(ABC):
+class AbstractUnigramMessageSegmentor(ABC):
     def __init__(self, b_overwrite_db: bool = False) -> None:
         self.lang = "en"
         self.word_metadata_by_codepoint: Dict[

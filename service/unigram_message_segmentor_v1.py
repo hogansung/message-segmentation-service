@@ -1,14 +1,9 @@
-import os
-import pathlib
-
-import hyperscan
 import math
-import multiprocess
 
-from service.message_segmentor_v1 import MessageSegmentorV1
+from service.unigram_message_segmentor_v0 import UnigramMessageSegmentorV0
 
 
-class MessageSegmentorV2(MessageSegmentorV1):
+class UnigramMessageSegmentorV1(UnigramMessageSegmentorV0):
     """
     It runs at a complexity of `O(N * (N + K))`, where `N` is the length of string and `K` is the number of candidates.
     After adding `+` quantifier to each character of regex, the complexity of `K` could be as large as `N^2`. However,
@@ -17,12 +12,12 @@ class MessageSegmentorV2(MessageSegmentorV1):
     TODO: Preprocess the regexes to reduce the complexity to O(N^2) instead of the naive O(N^3).
     """
 
-    en_occurrence_file_path = "./dat/en_full.txt"
-    db_folder_path = "./dat/serialized_word_freq_in_chunks_v2"
+    en_occurrence_file_path = "./dat/FrequencyWords/en_full.txt"
+    db_folder_path = "./dbs/serialized_dfa_dbs_v1"
 
     def _load_words(self):
         total_occurrence = 0
-        with open(MessageSegmentorV2.en_occurrence_file_path) as f:
+        with open(UnigramMessageSegmentorV1.en_occurrence_file_path) as f:
             for line in f.readlines():
                 word, occurrence = line.strip().split()
                 total_occurrence += float(occurrence)

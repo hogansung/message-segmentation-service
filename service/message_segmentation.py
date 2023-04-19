@@ -2,14 +2,16 @@ import sys
 from typing import List, Union, Dict
 from flask import request, flash, Flask
 
-from message_segmentor_v0 import MessageSegmentorV0
-from message_segmentor_v1 import MessageSegmentorV1
-from message_segmentor_v2 import MessageSegmentorV2
+from unigram_message_segmentor_exact_match import UnigramMessageSegmentorExactMatch
+from unigram_message_segmentor_v0 import UnigramMessageSegmentorV0
+from unigram_message_segmentor_v1 import UnigramMessageSegmentorV1
+from unigram_message_segmentor_v2 import UnigramMessageSegmentorV2
 
 api = Flask(__name__)
-# message_segmentor = MessageSegmentorV0(b_overwrite_db=False)
-# message_segmentor = MessageSegmentorV1(b_overwrite_db=False)
-message_segmentor = MessageSegmentorV2(b_overwrite_db=True)
+# message_segmentor = UnigramMessageSegmentorExactMatch(b_overwrite_db=True)
+# message_segmentor = UnigramMessageSegmentorV0(b_overwrite_db=False)
+# message_segmentor = UnigramMessageSegmentorV1(b_overwrite_db=False)
+message_segmentor = UnigramMessageSegmentorV2(b_overwrite_db=True)
 
 sys.setrecursionlimit(10000)
 
