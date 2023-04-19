@@ -13,6 +13,8 @@ pip install flask
 ```
 
 ## Run Service Locally
+One is suggested to launch the both of the following services in separated terminal tabs.
+
 ### npm
 ```shell
 npm run start
