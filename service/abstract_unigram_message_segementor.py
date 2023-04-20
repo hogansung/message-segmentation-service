@@ -237,11 +237,11 @@ class AbstractUnigramMessageSegmentor(ABC):
                         os.path.exists(db_file_path)
                         and os.path.getctime(db_file_path) >= overwrite_timestamp
                     ):
-                        print(
-                            f"db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} entries exists. "
-                            f"Skipped.",
-                            flush=True,
-                        )
+                        # print(
+                        #     f"db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} entries exists. "
+                        #     f"Skipped.",
+                        #     flush=True,
+                        # )
                         skipped_count += 1
                     else:
                         data_to_be_multi_processed.append(
@@ -254,7 +254,7 @@ class AbstractUnigramMessageSegmentor(ABC):
                             )
                         )
             print(
-                f"Cached rate: {len(data_to_be_multi_processed)/(skipped_count + len(data_to_be_multi_processed))*100}%"
+                f"Cached rate: {skipped_count/(skipped_count + len(data_to_be_multi_processed))*100}%"
                 f" (={len(data_to_be_multi_processed)} / {skipped_count + len(data_to_be_multi_processed)})"
             )
 
