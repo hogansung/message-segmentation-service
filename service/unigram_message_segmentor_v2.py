@@ -22,7 +22,7 @@ class UnigramMessageSegmentorV2(UnigramMessageSegmentorV0):
     unigram_folder_path = "./dat/google-dataset-v3/cleaned/v1/unigram"
     db_folder_path = "./dbs/serialized_dfa_dbs_v2"
     repetition_pattern = r"{1,2}"
-    # cpu_count = 4
+    cpu_count = 16
 
     @staticmethod
     def reduce_codepoints(

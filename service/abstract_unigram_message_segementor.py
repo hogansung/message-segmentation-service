@@ -16,7 +16,7 @@ from tqdm.autonotebook import tqdm
 
 
 class AbstractUnigramMessageSegmentor(ABC):
-    def __init__(self, overwrite_timestamp: Union[float | None] = None) -> None:
+    def __init__(self, overwrite_timestamp: Union[float, None] = None) -> None:
         self.lang = "en"
         self.word_metadata_by_codepoint: Dict[
             str, List[Tuple[str, float]]
@@ -156,27 +156,9 @@ class AbstractUnigramMessageSegmentor(ABC):
         word_metadata: List[Tuple[str, int]],
         prefix_codepoint: str,
         chunk_idx: int,
-        overwrite_timestamp: float,
+        db_file_path: str,
+        txt_file_path: str,
     ) -> None:
-        db_folder_path_with_prefix_codepoint = os.path.join(
-            self.db_folder_path, str(ord(prefix_codepoint))
-        )
-        pathlib.Path(db_folder_path_with_prefix_codepoint).mkdir(
-            parents=True, exist_ok=True
-        )
-
-        db_file_path = os.path.join(
-            db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.db"
-        )
-        txt_file_path = os.path.join(
-            db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.txt"
-        )
-        if os.path.getctime(db_file_path) >= overwrite_timestamp:
-            print(
-                f"db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} exists. Skipped."
-            )
-            return
-
         start_time = time.time()
         expressions = [
             # Make sure each regex has the start anchor, separation pattern, and `+` quantifier
@@ -210,7 +192,8 @@ class AbstractUnigramMessageSegmentor(ABC):
         end_time = time.time()
         print(
             f"Building db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} entries takes "
-            f"{end_time - start_time:.2f} seconds"
+            f"{end_time - start_time:.2f} seconds",
+            flush=True,
         )
 
     def _load_words(self):
@@ -223,26 +206,53 @@ class AbstractUnigramMessageSegmentor(ABC):
         for prefix_codepoint, metadata in tqdm(self.word_metadata_by_codepoint.items()):
             self.word_metadata_by_codepoint[prefix_codepoint] = sorted(metadata)
 
-    def _load_dbs(self, overwrite_timestamp: Union[float | None]):
+    def _load_dbs(self, overwrite_timestamp: Union[float, None]):
+        print(f"Number of CPUs: {self.cpu_count}")
+
         if not os.path.exists(self.db_folder_path) or overwrite_timestamp is not None:
             pathlib.Path(self.db_folder_path).mkdir(parents=True, exist_ok=True)
+
+            # Prepare data to be multi-processed.
+            data_to_be_multi_processed = []
+            for (
+                prefix_codepoint,
+                word_metadata,
+            ) in self.word_metadata_by_codepoint.items():
+                db_folder_path_with_prefix_codepoint = os.path.join(
+                    self.db_folder_path, str(ord(prefix_codepoint))
+                )
+                pathlib.Path(db_folder_path_with_prefix_codepoint).mkdir(
+                    parents=True, exist_ok=True
+                )
+                for chunk_idx in range(0, len(word_metadata), self.chunk_size):
+                    db_file_path = os.path.join(
+                        db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.db"
+                    )
+                    txt_file_path = os.path.join(
+                        db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.txt"
+                    )
+                    if os.path.getctime(db_file_path) >= overwrite_timestamp:
+                        print(
+                            f"db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} exists. Skipped.",
+                            flush=True,
+                        )
+                    else:
+                        data_to_be_multi_processed.append(
+                            (
+                                word_metadata[chunk_idx : chunk_idx + self.chunk_size],
+                                prefix_codepoint,
+                                chunk_idx // self.chunk_size,
+                                db_file_path,
+                                txt_file_path,
+                            )
+                        )
 
             # Reference: https://stackoverflow.com/questions/40217873/multiprocessing-use-only-the-physical-cores
             start_time = time.time()
             mp = multiprocess.Pool(self.cpu_count)
-            print(f"Number of CPUs: {self.cpu_count}")
             mp.starmap(
                 self._build_and_serialize_dfa_db,
-                [
-                    (
-                        word_metadata[idx : idx + self.chunk_size],
-                        prefix_codepoint,
-                        idx // self.chunk_size,
-                        overwrite_timestamp,
-                    )
-                    for prefix_codepoint, word_metadata in self.word_metadata_by_codepoint.items()
-                    for idx in range(0, len(word_metadata), self.chunk_size)
-                ],
+                data_to_be_multi_processed,
             )
             end_time = time.time()
             print(f"dbs were created and cached in {end_time - start_time} seconds")
