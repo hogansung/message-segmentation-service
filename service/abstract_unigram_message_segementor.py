@@ -7,8 +7,7 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple
-
+from typing import Any, Dict, List, Tuple, Union
 
 import hyperscan
 import multiprocess
@@ -17,7 +16,7 @@ from tqdm.autonotebook import tqdm
 
 
 class AbstractUnigramMessageSegmentor(ABC):
-    def __init__(self, b_overwrite_db: bool = False) -> None:
+    def __init__(self, overwrite_timestamp: Union[float | None] = None) -> None:
         self.lang = "en"
         self.word_metadata_by_codepoint: Dict[
             str, List[Tuple[str, float]]
@@ -37,7 +36,7 @@ class AbstractUnigramMessageSegmentor(ABC):
         self.debug_mode: bool = False
         self.debug_logs: List[str] = []
         self._load_words()
-        self._load_dbs(b_overwrite_db)
+        self._load_dbs(overwrite_timestamp)
 
     @property
     @abstractmethod
@@ -157,9 +156,8 @@ class AbstractUnigramMessageSegmentor(ABC):
         word_metadata: List[Tuple[str, int]],
         prefix_codepoint: str,
         chunk_idx: int,
+        overwrite_timestamp: float,
     ) -> None:
-        start_time = time.time()
-
         db_folder_path_with_prefix_codepoint = os.path.join(
             self.db_folder_path, str(ord(prefix_codepoint))
         )
@@ -167,6 +165,19 @@ class AbstractUnigramMessageSegmentor(ABC):
             parents=True, exist_ok=True
         )
 
+        db_file_path = os.path.join(
+            db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.db"
+        )
+        txt_file_path = os.path.join(
+            db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.txt"
+        )
+        if os.path.getctime(db_file_path) >= overwrite_timestamp:
+            print(
+                f"db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} exists. Skipped."
+            )
+            return
+
+        start_time = time.time()
         expressions = [
             # Make sure each regex has the start anchor, separation pattern, and `+` quantifier
             f"^{self.separation_pattern.join([re.escape(c) + self.repetition_pattern for c in word])}".encode()
@@ -185,12 +196,12 @@ class AbstractUnigramMessageSegmentor(ABC):
 
         serialized_db = hyperscan.dumpb(db)
         with open(
-            os.path.join(db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.db"),
+            db_file_path,
             "wb",
         ) as f:
             f.write(serialized_db)
         with open(
-            os.path.join(db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.txt"),
+            txt_file_path,
             "w",
         ) as f:
             for word, count in word_metadata:
@@ -212,8 +223,8 @@ class AbstractUnigramMessageSegmentor(ABC):
         for prefix_codepoint, metadata in tqdm(self.word_metadata_by_codepoint.items()):
             self.word_metadata_by_codepoint[prefix_codepoint] = sorted(metadata)
 
-    def _load_dbs(self, b_overwrite_db: bool):
-        if not os.path.exists(self.db_folder_path) or b_overwrite_db:
+    def _load_dbs(self, overwrite_timestamp: Union[float | None]):
+        if not os.path.exists(self.db_folder_path) or overwrite_timestamp is not None:
             pathlib.Path(self.db_folder_path).mkdir(parents=True, exist_ok=True)
 
             # Reference: https://stackoverflow.com/questions/40217873/multiprocessing-use-only-the-physical-cores
@@ -227,6 +238,7 @@ class AbstractUnigramMessageSegmentor(ABC):
                         word_metadata[idx : idx + self.chunk_size],
                         prefix_codepoint,
                         idx // self.chunk_size,
+                        overwrite_timestamp,
                     )
                     for prefix_codepoint, word_metadata in self.word_metadata_by_codepoint.items()
                     for idx in range(0, len(word_metadata), self.chunk_size)
