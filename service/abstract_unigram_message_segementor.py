@@ -214,6 +214,7 @@ class AbstractUnigramMessageSegmentor(ABC):
 
             # Prepare data to be multi-processed.
             data_to_be_multi_processed = []
+            skipped_count = 0
             for (
                 prefix_codepoint,
                 word_metadata,
@@ -224,28 +225,38 @@ class AbstractUnigramMessageSegmentor(ABC):
                 pathlib.Path(db_folder_path_with_prefix_codepoint).mkdir(
                     parents=True, exist_ok=True
                 )
-                for chunk_idx in range(0, len(word_metadata), self.chunk_size):
+                for idx in range(0, len(word_metadata), self.chunk_size):
+                    chunk_idx = idx // self.chunk_size
                     db_file_path = os.path.join(
                         db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.db"
                     )
                     txt_file_path = os.path.join(
                         db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.txt"
                     )
-                    if os.path.getctime(db_file_path) >= overwrite_timestamp:
+                    if (
+                        os.path.exists(db_file_path)
+                        and os.path.getctime(db_file_path) >= overwrite_timestamp
+                    ):
                         print(
-                            f"db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} exists. Skipped.",
+                            f"db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} entries exists. "
+                            f"Skipped.",
                             flush=True,
                         )
+                        skipped_count += 1
                     else:
                         data_to_be_multi_processed.append(
                             (
-                                word_metadata[chunk_idx : chunk_idx + self.chunk_size],
+                                word_metadata[idx : idx + self.chunk_size],
                                 prefix_codepoint,
-                                chunk_idx // self.chunk_size,
+                                chunk_idx,
                                 db_file_path,
                                 txt_file_path,
                             )
                         )
+            print(
+                f"Cached rate: {len(data_to_be_multi_processed)/(skipped_count + len(data_to_be_multi_processed))*100}%"
+                f" (={len(data_to_be_multi_processed)} / {skipped_count + len(data_to_be_multi_processed)})"
+            )
 
             # Reference: https://stackoverflow.com/questions/40217873/multiprocessing-use-only-the-physical-cores
             start_time = time.time()
