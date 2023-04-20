@@ -1,16 +1,16 @@
 import string
 from typing import List, Tuple
 
-from service.abstract_message_segementor import AbstractMessageSegmentor
+from service.abstract_unigram_message_segementor import AbstractUnigramMessageSegmentor
 
 
-class MessageSegmentorV0(AbstractMessageSegmentor):
+class UnigramMessageSegmentorExactMatch(AbstractUnigramMessageSegmentor):
     """
     It runs at a complexity of `O(N^2 * |DFA.scan()|)`, where `N` is the length of string. With adding both the start
     and end anchors for each regex, the complexity of `|DFA.scan()|` is very possibly `O(1)`, and is worst at `O(N)`.
     """
 
-    db_folder_name = "./dat/serialized_word_freq_in_chunks_v0"
+    db_folder_path = "./dbs/serialized_dfa_dbs_exact_match"
 
     def dp_wordfreq(self, codepoint_idx: int) -> float:
         if codepoint_idx == self.num_codepoints:
@@ -45,7 +45,7 @@ class MessageSegmentorV0(AbstractMessageSegmentor):
                 matched_regex_metadata: List[Tuple[int, int]] = []
                 db.scan(
                     self.smashed_bytes[byte_idx:n_byte_idx],
-                    match_event_handler=self.on_match,
+                    match_event_handler=self._on_match,
                     context={"matched_regex_metadata": matched_regex_metadata},
                 )
                 self.num_op += n_byte_idx - byte_idx
