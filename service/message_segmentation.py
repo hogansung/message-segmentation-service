@@ -10,7 +10,7 @@ from unigram_message_segmentor_v2 import UnigramMessageSegmentorV2
 api = Flask(__name__)
 # message_segmentor = UnigramMessageSegmentorExactMatch(b_overwrite_db=True)
 # message_segmentor = UnigramMessageSegmentorV0(b_overwrite_db=False)
-# message_segmentor = UnigramMessageSegmentorV1(b_overwrite_db=False)
+# message_segmentor = UnigramMessageSegmentorV1(b_overwrite_db=True)
 message_segmentor = UnigramMessageSegmentorV2(b_overwrite_db=True)
 
 sys.setrecursionlimit(10000)

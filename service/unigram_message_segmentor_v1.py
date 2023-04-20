@@ -1,4 +1,5 @@
 import math
+from tqdm.autonotebook import tqdm
 
 from service.unigram_message_segmentor_v0 import UnigramMessageSegmentorV0
 
@@ -18,7 +19,7 @@ class UnigramMessageSegmentorV1(UnigramMessageSegmentorV0):
     def _load_words(self):
         total_occurrence = 0
         with open(UnigramMessageSegmentorV1.en_occurrence_file_path) as f:
-            for line in f.readlines():
+            for line in tqdm(f.readlines()):
                 word, occurrence = line.strip().split()
                 total_occurrence += float(occurrence)
                 self.word_metadata_by_codepoint[word[0]].append(
@@ -27,7 +28,7 @@ class UnigramMessageSegmentorV1(UnigramMessageSegmentorV0):
 
         # Convert occurrence to log-frequency
         # Heuristics: sort each word_metadata_by_codepoint value lexically
-        for prefix_codepoint, metadata in self.word_metadata_by_codepoint.items():
+        for prefix_codepoint, metadata in tqdm(self.word_metadata_by_codepoint.items()):
             self.word_metadata_by_codepoint[prefix_codepoint] = sorted(
                 [
                     (word, math.log(occurrence / total_occurrence))

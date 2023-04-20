@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Tuple
 import hyperscan
 import multiprocess
 import wordfreq
+from tqdm.autonotebook import tqdm
 
 
 class AbstractUnigramMessageSegmentor(ABC):
@@ -69,7 +70,11 @@ class AbstractUnigramMessageSegmentor(ABC):
 
     @property
     def repetition_pattern(self) -> str:
-        return ""
+        return "+"
+
+    @property
+    def cpu_count(self) -> int:
+        return multiprocess.cpu_count() - 1
 
     @abstractmethod
     def dp_wordfreq(self, codepoint_idx: int) -> float:
@@ -200,11 +205,11 @@ class AbstractUnigramMessageSegmentor(ABC):
     def _load_words(self):
         # Reference: https://github.com/rspeer/wordfreq
         frequency_dict = wordfreq.get_frequency_dict(self.lang)
-        for word, frequency in frequency_dict.items():
+        for word, frequency in tqdm(frequency_dict.items()):
             self.word_metadata_by_codepoint[word[0]].append((word, math.log(frequency)))
 
         # Heuristics: sort each word_metadata_by_codepoint value lexically
-        for prefix_codepoint, metadata in self.word_metadata_by_codepoint.items():
+        for prefix_codepoint, metadata in tqdm(self.word_metadata_by_codepoint.items()):
             self.word_metadata_by_codepoint[prefix_codepoint] = sorted(metadata)
 
     def _load_dbs(self, b_overwrite_db: bool):
@@ -212,7 +217,9 @@ class AbstractUnigramMessageSegmentor(ABC):
             pathlib.Path(self.db_folder_path).mkdir(parents=True, exist_ok=True)
 
             # Reference: https://stackoverflow.com/questions/40217873/multiprocessing-use-only-the-physical-cores
-            mp = multiprocess.Pool(multiprocess.cpu_count() - 1)
+            start_time = time.time()
+            mp = multiprocess.Pool(self.cpu_count)
+            print(f"Number of CPUs: {self.cpu_count}")
             mp.starmap(
                 self._build_and_serialize_dfa_db,
                 [
@@ -225,9 +232,10 @@ class AbstractUnigramMessageSegmentor(ABC):
                     for idx in range(0, len(word_metadata), self.chunk_size)
                 ],
             )
-            print("dbs were created and cached")
+            end_time = time.time()
+            print(f"dbs were created and cached in {end_time - start_time} seconds")
 
-        for prefix_codepoint in self.word_metadata_by_codepoint.keys():
+        for prefix_codepoint in tqdm(self.word_metadata_by_codepoint.keys()):
             db_folder_path_with_prefix_codepoint = os.path.join(
                 self.db_folder_path, str(ord(prefix_codepoint))
             )
