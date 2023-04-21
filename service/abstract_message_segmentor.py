@@ -1,26 +1,25 @@
-import pathlib
-
-import math
 import os
+import pathlib
 import re
 import sys
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Optional
 
 import hyperscan
+import math
 import multiprocess
 import wordfreq
 from tqdm.autonotebook import tqdm
 
 
-class AbstractUnigramMessageSegmentor(ABC):
+class AbstractMessageSegmentor(ABC):
     time_format = "%Y-%m-%d %H:%M:%S"
 
-    def __init__(self, overwrite_timestamp: Union[float, None] = None) -> None:
+    def __init__(self, overwrite_timestamp: Optional[float] = None) -> None:
         self.lang = "en"
-        self.word_metadata_by_codepoint: Dict[
+        self.unigram_metadata_by_codepoint: Dict[
             str, List[Tuple[str, float]]
         ] = defaultdict(list)
         self.dbs_by_codepoint: Dict[str, List[hyperscan.Database]] = defaultdict(list)
@@ -31,19 +30,29 @@ class AbstractUnigramMessageSegmentor(ABC):
         self.num_bytes: int = 0
         self.byte_idx_to_codepoint_idx = None
         self.codepoint_idx_to_byte_idx = None
-        self.vis: List[bool] = []
-        self.rcd: List[Tuple[float, int]] = []  # score, count, codepoint_idx
         self.num_op: int = 0
         self.inf: int = sys.maxsize
         self.debug_mode: bool = False
         self.debug_logs: List[str] = []
-        self._load_words()
+        self._load_data()
         self._load_dbs(overwrite_timestamp)
+
+    @staticmethod
+    def reduce_codepoints(
+        token: str,
+    ) -> str:
+        return re.sub(r"(.)\1+", r"\1\1", token)
+
+    @staticmethod
+    def reduce_digits(token: str) -> str:
+        return re.sub(
+            r"(\d{3,}|(\d)((?!\2))\d)", lambda m: "0" * len(m.group(1)), token
+        )
 
     @property
     @abstractmethod
     def db_folder_path(self) -> str:
-        pass
+        raise NotImplemented
 
     @property
     def chunk_size(self) -> int:
@@ -78,8 +87,16 @@ class AbstractUnigramMessageSegmentor(ABC):
         return multiprocess.cpu_count() - 1
 
     @abstractmethod
-    def dp_wordfreq(self, codepoint_idx: int) -> float:
-        pass
+    def _dp_segmentation(self, codepoint_idx: int) -> float:
+        raise NotImplemented
+
+    @abstractmethod
+    def _backtrack(self) -> Tuple[List[str], List[float]]:
+        raise NotImplemented
+
+    @abstractmethod
+    def _load_data(self) -> None:
+        raise NotImplemented
 
     def segment_sentence(
         self, sentence: str, debug_mode=False
@@ -107,7 +124,7 @@ class AbstractUnigramMessageSegmentor(ABC):
             self._convert_str_to_bytes_and_build_lookup_table()
             self.vis = [False for _ in range(self.num_codepoints)]
             self.rcd = [(self.min_float_val, -1) for _ in range(self.num_codepoints)]
-            self.dp_wordfreq(0)
+            self._dp_segmentation(0)
             segments, scores = self._backtrack()
 
             if self.smashed_str != self.raw_str:
@@ -138,7 +155,7 @@ class AbstractUnigramMessageSegmentor(ABC):
         if wordfreq.get_language_info(self.lang)["tokenizer"] == "jieba":
             # If we used the Jieba tokenizer, we could tokenize anything to match
             # our wordlist, even nonsense. To counteract this, we multiply by a
-            # probability for each word break that was inferred.
+            # probability for each unigram break that was inferred.
             overall_frequency *= wordfreq.INFERRED_SPACE_FACTOR ** -(
                 len(all_segments) - 1
             )
@@ -164,8 +181,8 @@ class AbstractUnigramMessageSegmentor(ABC):
         start_time = time.time()
         expressions = [
             # Make sure each regex has the start anchor, separation pattern, and `+` quantifier
-            f"^{self.separation_pattern.join([re.escape(c) + self.repetition_pattern for c in word])}".encode()
-            for word, _ in word_metadata
+            f"^{self.separation_pattern.join([re.escape(c) + self.repetition_pattern for c in unigram])}".encode()
+            for unigram, _ in word_metadata
         ]
         flags = [
             hyperscan.HS_FLAG_CASELESS | hyperscan.HS_FLAG_UTF8 | hyperscan.HS_FLAG_UCP
@@ -188,8 +205,8 @@ class AbstractUnigramMessageSegmentor(ABC):
             txt_file_path,
             "w",
         ) as f:
-            for word, count in word_metadata:
-                f.write(f"{word} {count}\n")
+            for unigram, count in word_metadata:
+                f.write(f"{unigram} {count}\n")
 
         end_time = time.time()
         print(
@@ -198,17 +215,7 @@ class AbstractUnigramMessageSegmentor(ABC):
             flush=True,
         )
 
-    def _load_words(self):
-        # Reference: https://github.com/rspeer/wordfreq
-        frequency_dict = wordfreq.get_frequency_dict(self.lang)
-        for word, frequency in tqdm(frequency_dict.items()):
-            self.word_metadata_by_codepoint[word[0]].append((word, math.log(frequency)))
-
-        # Heuristics: sort each word_metadata_by_codepoint value lexically
-        for prefix_codepoint, metadata in tqdm(self.word_metadata_by_codepoint.items()):
-            self.word_metadata_by_codepoint[prefix_codepoint] = sorted(metadata)
-
-    def _load_dbs(self, overwrite_timestamp: Union[float, None]):
+    def _load_dbs(self, overwrite_timestamp: Optional[float]):
         print(f"Number of CPUs: {self.cpu_count}")
 
         if not os.path.exists(self.db_folder_path) or overwrite_timestamp is not None:
@@ -229,7 +236,7 @@ class AbstractUnigramMessageSegmentor(ABC):
                     if file_last_modified_timestamp < overwrite_timestamp:
                         print(
                             f"Remove outdated file: {file_path} that is last modified on "
-                            f"{time.strftime(AbstractUnigramMessageSegmentor.time_format)}"
+                            f"{time.strftime(self.time_format, time.localtime(file_last_modified_timestamp))}"
                         )
                         os.remove(file_path)
 
@@ -239,7 +246,7 @@ class AbstractUnigramMessageSegmentor(ABC):
             for (
                 prefix_codepoint,
                 word_metadata,
-            ) in self.word_metadata_by_codepoint.items():
+            ) in self.unigram_metadata_by_codepoint.items():
                 prefix_codepoint_folder_path = os.path.join(
                     self.db_folder_path, str(ord(prefix_codepoint))
                 )
@@ -289,7 +296,10 @@ class AbstractUnigramMessageSegmentor(ABC):
             end_time = time.time()
             print(f"dbs were created and cached in {end_time - start_time} seconds")
 
-        for prefix_codepoint in tqdm(self.word_metadata_by_codepoint.keys()):
+        for prefix_codepoint in tqdm(
+            self.unigram_metadata_by_codepoint.keys(),
+            desc="Load serialized DFAs",
+        ):
             prefix_codepoint_folder_path = os.path.join(
                 self.db_folder_path, str(ord(prefix_codepoint))
             )
@@ -317,24 +327,6 @@ class AbstractUnigramMessageSegmentor(ABC):
     ) -> None:
         assert "matched_regex_metadata" in context
         context["matched_regex_metadata"].append((regex_idx, ed_byte_idx - st_byte_idx))
-
-    def _backtrack(self) -> Tuple[List[str], List[float]]:
-        segments: List[str] = []
-        scores: List[float] = []
-        codepoint_idx = 0
-        while codepoint_idx < self.num_codepoints:
-            if self.rcd[codepoint_idx][1] == -1:
-                n_codepoint_idx = self.num_codepoints
-            else:
-                n_codepoint_idx = self.rcd[codepoint_idx][1]
-            segments.append(self.raw_str[codepoint_idx:n_codepoint_idx])
-            scores.append(
-                self.rcd[codepoint_idx][0] - self.rcd[n_codepoint_idx][0]
-                if n_codepoint_idx < self.num_codepoints
-                else self.rcd[codepoint_idx][0]
-            )
-            codepoint_idx = n_codepoint_idx
-        return segments, scores
 
     def _convert_str_to_bytes_and_build_lookup_table(self) -> None:
         self.byte_idx_to_codepoint_idx = dict()

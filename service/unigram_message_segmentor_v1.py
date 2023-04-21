@@ -14,25 +14,31 @@ class UnigramMessageSegmentorV1(UnigramMessageSegmentorV0):
     """
 
     en_occurrence_file_path = "./dat/FrequencyWords/en_full.txt"
-    db_folder_path = "./dbs/serialized_dfa_dbs_v1"
+    db_folder_path = "./dbs/serialized_unigram_dfa_dbs_v1"
 
-    def _load_words(self):
+    def _load_unigrams(self):
         total_occurrence = 0
         with open(UnigramMessageSegmentorV1.en_occurrence_file_path) as f:
-            for line in tqdm(f.readlines()):
-                word, occurrence = line.strip().split()
+            for line in tqdm(
+                f.readlines(),
+                desc="Load Unigram Metadata",
+            ):
+                unigram, occurrence = line.strip().split()
                 total_occurrence += float(occurrence)
-                self.word_metadata_by_codepoint[word[0]].append(
-                    (word, float(occurrence))
+                self.unigram_metadata_by_codepoint[unigram[0]].append(
+                    (unigram, float(occurrence))
                 )
 
         # Convert occurrence to log-frequency
-        # Heuristics: sort each word_metadata_by_codepoint value lexically
-        for prefix_codepoint, metadata in tqdm(self.word_metadata_by_codepoint.items()):
-            self.word_metadata_by_codepoint[prefix_codepoint] = sorted(
+        # Heuristics: sort each unigram_metadata_by_codepoint value lexically
+        for prefix_codepoint, metadata in tqdm(
+            self.unigram_metadata_by_codepoint.items(),
+            desc="Convert Unigram Occurrence to Log-Frequency",
+        ):
+            self.unigram_metadata_by_codepoint[prefix_codepoint] = sorted(
                 [
-                    (word, math.log(occurrence / total_occurrence))
-                    for word, occurrence in metadata
+                    (unigram, math.log(occurrence / total_occurrence))
+                    for unigram, occurrence in metadata
                 ]
             )
-        print("Finish reading source file")
+        print("Finish reading unigram files")

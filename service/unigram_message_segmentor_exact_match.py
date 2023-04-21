@@ -1,18 +1,18 @@
 import string
 from typing import List, Tuple
 
-from service.abstract_unigram_message_segementor import AbstractUnigramMessageSegmentor
+from service.abstract_unigram_message_segmentor import AbstractUnigramMessageSegmentor
 
 
-class UnigramMessageSegmentorExactMatch(AbstractUnigramMessageSegmentor):
+class MessageSegmentorExactMatch(AbstractUnigramMessageSegmentor):
     """
     It runs at a complexity of `O(N^2 * |DFA.scan()|)`, where `N` is the length of string. With adding both the start
     and end anchors for each regex, the complexity of `|DFA.scan()|` is very possibly `O(1)`, and is worst at `O(N)`.
     """
 
-    db_folder_path = "./dbs/serialized_dfa_dbs_exact_match"
+    db_folder_path = "./dbs/serialized_unigram_dfa_dbs_exact_match"
 
-    def dp_wordfreq(self, codepoint_idx: int) -> float:
+    def _dp_unigram_segmentation(self, codepoint_idx: int) -> float:
         if codepoint_idx == self.num_codepoints:
             return 0
         if self.vis[codepoint_idx]:
@@ -21,7 +21,7 @@ class UnigramMessageSegmentorExactMatch(AbstractUnigramMessageSegmentor):
         # Special case: always step forward at punctuations
         if self.smashed_str[codepoint_idx] in string.punctuation:
             self.rcd[codepoint_idx] = (
-                self.dp_wordfreq(codepoint_idx + 1),
+                self._dp_unigram_segmentation(codepoint_idx + 1),
                 codepoint_idx + 1,
             )
             self.vis[codepoint_idx] = True
@@ -31,13 +31,13 @@ class UnigramMessageSegmentorExactMatch(AbstractUnigramMessageSegmentor):
         self.rcd[codepoint_idx] = max(
             self.rcd[codepoint_idx],
             (
-                self.min_log_prob + self.dp_wordfreq(codepoint_idx + 1),
+                self.min_log_prob + self._dp_unigram_segmentation(codepoint_idx + 1),
                 codepoint_idx + 1,
             ),
         )
 
         for n_codepoint_idx in range(codepoint_idx + 1, self.num_codepoints + 1):
-            n_score = self.dp_wordfreq(n_codepoint_idx)
+            n_score = self._dp_unigram_segmentation(n_codepoint_idx)
             prefix_codepoint = self.smashed_str[codepoint_idx]
             byte_idx = self.codepoint_idx_to_byte_idx[codepoint_idx]
             n_byte_idx = self.codepoint_idx_to_byte_idx[n_codepoint_idx]
@@ -52,7 +52,7 @@ class UnigramMessageSegmentorExactMatch(AbstractUnigramMessageSegmentor):
 
                 # There could still be multiple matches. For example, "aaa" matches "a+", "a+a+", "a+a+a+".
                 for matched_regex_idx, matched_regex_len in matched_regex_metadata:
-                    score = self.word_metadata_by_codepoint[prefix_codepoint][
+                    score = self.unigram_metadata_by_codepoint[prefix_codepoint][
                         db_idx * self.chunk_size + matched_regex_idx
                     ][1]
                     self.num_op += 1

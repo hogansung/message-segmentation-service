@@ -3,15 +3,16 @@ import time
 from typing import List, Union, Dict
 from flask import request, flash, Flask
 
-from unigram_message_segmentor_exact_match import UnigramMessageSegmentorExactMatch
+from unigram_message_segmentor_exact_match import MessageSegmentorExactMatch
 from unigram_message_segmentor_v0 import UnigramMessageSegmentorV0
 from unigram_message_segmentor_v1 import UnigramMessageSegmentorV1
 from unigram_message_segmentor_v2 import UnigramMessageSegmentorV2
+from bigram_message_segmentor_v0 import BigramMessageSegmentorV0
 
 api = Flask(__name__)
 
 # overwrite_timestamp = time.mktime(
-#     time.strptime("2023-04-20 11:25:00", "%Y-%m-%d %H:%M:%S")
+#     time.strptime("2023-04-20 20:00:00", "%Y-%m-%d %H:%M:%S")
 # )
 overwrite_timestamp = None
 
@@ -19,6 +20,7 @@ overwrite_timestamp = None
 # message_segmentor = UnigramMessageSegmentorV0(b_overwrite_db=False)
 # message_segmentor = UnigramMessageSegmentorV1(b_overwrite_db=True)
 message_segmentor = UnigramMessageSegmentorV2(overwrite_timestamp)
+# message_segmentor = BigramMessageSegmentorV0(overwrite_timestamp)
 
 sys.setrecursionlimit(10000)
 

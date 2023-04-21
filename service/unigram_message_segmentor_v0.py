@@ -1,7 +1,7 @@
 import string
 from typing import List, Tuple
 
-from service.abstract_unigram_message_segementor import AbstractUnigramMessageSegmentor
+from service.abstract_unigram_message_segmentor import AbstractUnigramMessageSegmentor
 
 
 class UnigramMessageSegmentorV0(AbstractUnigramMessageSegmentor):
@@ -13,28 +13,28 @@ class UnigramMessageSegmentorV0(AbstractUnigramMessageSegmentor):
     TODO: Preprocess the regexes to reduce the complexity to O(N^2) instead of the naive O(N^3).
     """
 
-    db_folder_path = "./dbs/serialized_dfa_dbs_v0"
+    db_folder_path = "./dbs/serialized_unigram_dfa_dbs_v0"
 
-    def dp_wordfreq(self, codepoint_idx: int) -> float:
+    def _dp_unigram_segmentation(self, codepoint_idx: int) -> float:
         if codepoint_idx == self.num_codepoints:
             return 0
         if self.vis[codepoint_idx]:
             return self.rcd[codepoint_idx][0]
 
-        # Special case: always step forward at punctuations
-        if self.smashed_str[codepoint_idx] in string.punctuation:
-            self.rcd[codepoint_idx] = (
-                self.dp_wordfreq(codepoint_idx + 1),
-                codepoint_idx + 1,
-            )
-            self.vis[codepoint_idx] = True
-            return self.rcd[codepoint_idx][0]
+        # # Special case: always step forward at punctuations
+        # if self.smashed_str[codepoint_idx] in string.punctuation:
+        #     self.rcd[codepoint_idx] = (
+        #         self._dp_segmentation(codepoint_idx + 1),
+        #         codepoint_idx + 1,
+        #     )
+        #     self.vis[codepoint_idx] = True
+        #     return self.rcd[codepoint_idx][0]
 
         # Default a minimum prob to move forward
         self.rcd[codepoint_idx] = max(
             self.rcd[codepoint_idx],
             (
-                self.min_log_prob + self.dp_wordfreq(codepoint_idx + 1),
+                self.min_log_prob + self._dp_segmentation(codepoint_idx + 1),
                 codepoint_idx + 1,
             ),
         )
@@ -51,14 +51,14 @@ class UnigramMessageSegmentorV0(AbstractUnigramMessageSegmentor):
             self.num_op += self.num_bytes - byte_idx
 
             for matched_regex_idx, matched_regex_len in matched_regex_metadata:
-                score = self.word_metadata_by_codepoint[prefix_codepoint][
+                score = self.unigram_metadata_by_codepoint[prefix_codepoint][
                     db_idx * self.chunk_size + matched_regex_idx
                 ][1]
                 self.num_op += 1
                 n_codepoint_idx = self.byte_idx_to_codepoint_idx[
                     byte_idx + matched_regex_len
                 ]
-                n_score = self.dp_wordfreq(n_codepoint_idx)
+                n_score = self._dp_segmentation(n_codepoint_idx)
                 self.rcd[codepoint_idx] = max(
                     self.rcd[codepoint_idx],
                     (
