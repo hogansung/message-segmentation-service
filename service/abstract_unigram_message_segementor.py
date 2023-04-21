@@ -16,6 +16,8 @@ from tqdm.autonotebook import tqdm
 
 
 class AbstractUnigramMessageSegmentor(ABC):
+    time_format = "%Y-%m-%d %H:%M:%S"
+
     def __init__(self, overwrite_timestamp: Union[float, None] = None) -> None:
         self.lang = "en"
         self.word_metadata_by_codepoint: Dict[
@@ -191,7 +193,7 @@ class AbstractUnigramMessageSegmentor(ABC):
 
         end_time = time.time()
         print(
-            f"Building db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} entries takes "
+            f"Building db for {prefix_codepoint} -- {chunk_idx:03d} with {len(word_metadata)} entries takes "
             f"{end_time - start_time:.2f} seconds",
             flush=True,
         )
@@ -212,6 +214,25 @@ class AbstractUnigramMessageSegmentor(ABC):
         if not os.path.exists(self.db_folder_path) or overwrite_timestamp is not None:
             pathlib.Path(self.db_folder_path).mkdir(parents=True, exist_ok=True)
 
+            # Clean up data that are too old.
+            for prefix_codepoint_folder_name in os.listdir(self.db_folder_path):
+                prefix_codepoint_folder_path = os.path.join(
+                    self.db_folder_path, prefix_codepoint_folder_name
+                )
+                if not os.path.isdir(prefix_codepoint_folder_path):
+                    continue
+                for file_name in os.listdir(prefix_codepoint_folder_path):
+                    file_path = os.path.join(prefix_codepoint_folder_path, file_name)
+                    if not os.path.isfile(file_path):
+                        continue
+                    file_last_modified_timestamp = os.path.getctime(file_path)
+                    if file_last_modified_timestamp < overwrite_timestamp:
+                        print(
+                            f"Remove outdated file: {file_path} that is last modified on "
+                            f"{time.strftime(AbstractUnigramMessageSegmentor.time_format)}"
+                        )
+                        os.remove(file_path)
+
             # Prepare data to be multi-processed.
             data_to_be_multi_processed = []
             skipped_count = 0
@@ -219,26 +240,26 @@ class AbstractUnigramMessageSegmentor(ABC):
                 prefix_codepoint,
                 word_metadata,
             ) in self.word_metadata_by_codepoint.items():
-                db_folder_path_with_prefix_codepoint = os.path.join(
+                prefix_codepoint_folder_path = os.path.join(
                     self.db_folder_path, str(ord(prefix_codepoint))
                 )
-                pathlib.Path(db_folder_path_with_prefix_codepoint).mkdir(
+                pathlib.Path(prefix_codepoint_folder_path).mkdir(
                     parents=True, exist_ok=True
                 )
                 for idx in range(0, len(word_metadata), self.chunk_size):
                     chunk_idx = idx // self.chunk_size
                     db_file_path = os.path.join(
-                        db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.db"
+                        prefix_codepoint_folder_path, f"{chunk_idx:03d}.db"
                     )
                     txt_file_path = os.path.join(
-                        db_folder_path_with_prefix_codepoint, f"{chunk_idx:02d}.txt"
+                        prefix_codepoint_folder_path, f"{chunk_idx:03d}.txt"
                     )
                     if (
                         os.path.exists(db_file_path)
                         and os.path.getctime(db_file_path) >= overwrite_timestamp
                     ):
                         # print(
-                        #     f"db for {prefix_codepoint} -- {chunk_idx:02d} with {len(word_metadata)} entries exists. "
+                        #     f"db for {prefix_codepoint} -- {chunk_idx:03d} with {len(word_metadata)} entries exists. "
                         #     f"Skipped.",
                         #     flush=True,
                         # )
@@ -269,18 +290,16 @@ class AbstractUnigramMessageSegmentor(ABC):
             print(f"dbs were created and cached in {end_time - start_time} seconds")
 
         for prefix_codepoint in tqdm(self.word_metadata_by_codepoint.keys()):
-            db_folder_path_with_prefix_codepoint = os.path.join(
+            prefix_codepoint_folder_path = os.path.join(
                 self.db_folder_path, str(ord(prefix_codepoint))
             )
-            pathlib.Path(db_folder_path_with_prefix_codepoint).mkdir(
+            pathlib.Path(prefix_codepoint_folder_path).mkdir(
                 parents=True, exist_ok=True
             )
-            for file_name in sorted(os.listdir(db_folder_path_with_prefix_codepoint)):
+            for file_name in sorted(os.listdir(prefix_codepoint_folder_path)):
                 if not file_name.endswith(".db"):
                     continue
-                db_file_name = os.path.join(
-                    db_folder_path_with_prefix_codepoint, file_name
-                )
+                db_file_name = os.path.join(prefix_codepoint_folder_path, file_name)
                 with open(db_file_name, "rb") as f:
                     serialized_db = f.read()
                 self.dbs_by_codepoint[prefix_codepoint].append(

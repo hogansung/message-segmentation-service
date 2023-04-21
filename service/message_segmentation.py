@@ -10,9 +10,10 @@ from unigram_message_segmentor_v2 import UnigramMessageSegmentorV2
 
 api = Flask(__name__)
 
-overwrite_timestamp = time.mktime(
-    time.strptime("2023-04-20 11:25:00", "%Y-%m-%d %H:%M:%S")
-)
+# overwrite_timestamp = time.mktime(
+#     time.strptime("2023-04-20 11:25:00", "%Y-%m-%d %H:%M:%S")
+# )
+overwrite_timestamp = None
 
 # message_segmentor = UnigramMessageSegmentorExactMatch(b_overwrite_db=True)
 # message_segmentor = UnigramMessageSegmentorV0(b_overwrite_db=False)
