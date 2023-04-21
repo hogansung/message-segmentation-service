@@ -12,13 +12,17 @@ class AbstractBigramMessageSegmentor(AbstractMessageSegmentor, ABC):
             Dict[str, Tuple[float, int, str]]
         ] = []  # codepoint_idx -> fgram -> (score, n_codepoint_idx, sgram)
         self.log_prob_by_fgram_by_sgram: Dict[str, Dict[str, float]] = defaultdict(
-            lambda: defaultdict(float)
+            lambda: defaultdict(lambda: self.min_log_prob)
         )
         super().__init__(overwrite_timestamp)
 
     def _load_data(self):
         self._load_unigrams()
         self._load_bigrams()
+
+    @abstractmethod
+    def _load_unigrams(self):
+        raise NotImplemented
 
     @abstractmethod
     def _load_bigrams(self):

@@ -19,8 +19,8 @@ overwrite_timestamp = None
 # message_segmentor = UnigramMessageSegmentorExactMatch(b_overwrite_db=True)
 # message_segmentor = UnigramMessageSegmentorV0(b_overwrite_db=False)
 # message_segmentor = UnigramMessageSegmentorV1(b_overwrite_db=True)
-message_segmentor = UnigramMessageSegmentorV2(overwrite_timestamp)
-# message_segmentor = BigramMessageSegmentorV0(overwrite_timestamp)
+# message_segmentor = UnigramMessageSegmentorV2(overwrite_timestamp)
+message_segmentor = BigramMessageSegmentorV0(overwrite_timestamp)
 
 sys.setrecursionlimit(10000)
 

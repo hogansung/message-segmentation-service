@@ -115,8 +115,8 @@ class BigramMessageSegmentorV0(AbstractBigramMessageSegmentor):
         )
         if self.debug_mode:
             self.debug_logs.append(
-                f"(min-prob) {self.raw_str[codepoint_idx:]}: '{sgram}' ({score:.5f})"
-                f" + '{self.raw_str[n_codepoint_idx:]}' ({n_score:.5f})"
+                f"[min-prob] ({self.raw_str[codepoint_idx:]}|{fgram}): '({sgram}|{fgram})' ({score:.5f})"
+                f" + '({self.raw_str[n_codepoint_idx:]}|{sgram})' ({n_score:.5f})"
             )
 
         prefix_codepoint = self.smashed_str[codepoint_idx]
@@ -139,7 +139,7 @@ class BigramMessageSegmentorV0(AbstractBigramMessageSegmentor):
                     self.unigram_metadata_by_codepoint[prefix_codepoint][
                         db_idx * self.chunk_size + matched_regex_idx
                     ][1]
-                    if fgram is None
+                    if fgram is ""
                     else self.log_prob_by_fgram_by_sgram[fgram][sgram]
                 )
                 n_score = self._dp_bigram_segmentation(n_codepoint_idx, sgram)
@@ -154,8 +154,8 @@ class BigramMessageSegmentorV0(AbstractBigramMessageSegmentor):
                 )
                 if self.debug_mode:
                     self.debug_logs.append(
-                        f"{self.raw_str[codepoint_idx:]}: '{sgram}' ({score:.5f})"
-                        f" + '{self.raw_str[n_codepoint_idx:]}' ({n_score:.5f})"
+                        f"({self.raw_str[codepoint_idx:]}|{fgram}): '({sgram}|{fgram})' ({score:.5f})"
+                        f" + '({self.raw_str[n_codepoint_idx:]}|{sgram})' ({n_score:.5f})"
                     )
 
         self.vis[codepoint_idx][fgram] = True
